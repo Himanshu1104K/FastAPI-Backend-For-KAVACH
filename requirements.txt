@@ -1,0 +1,12 @@
+pandas
+numpy 
+matplotlib
+tensorflow
+uvicorn
+gunicorn
+joblib
+pydantic
+scipy
+uvloop
+httptools
+scikit-learn
