@@ -2,7 +2,7 @@ import tensorflow as tf
 import joblib as jb
 import numpy as np
 import pandas as pd
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -10,10 +10,10 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins (Frontend domains)
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],  # Allow all methods (GET, POST, PUT, DELETE, etc.)
-    allow_headers=["*"],  # Allow all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 MODEL_FILE = "TrainedModel/SHMS_Efficiency_Model.keras"
@@ -36,12 +36,19 @@ columns = [
 model = tf.keras.models.load_model(MODEL_FILE)
 scaler = jb.load(SCALER_FILE)
 
+# Global Data Storage
+soldier_data_df = None
+efficiency_predictions = None
 
-@app.get("/")
-def generate_data():
+
+def generate_soldier_data(num_soldiers=10):
+    global soldier_data_df, efficiency_predictions
+
     data = []
-    for _ in range(10):
-        category = np.random.choice(["low", "medium", "high"], p=[0.001, 0.4995, 0.4995])
+    for _ in range(num_soldiers):
+        category = np.random.choice(
+            ["low", "medium", "high"], p=[0.001, 0.4995, 0.4995]
+        )
 
         if category == "low":
             temp = np.random.uniform(38, 40)
@@ -98,27 +105,46 @@ def generate_data():
             ]
         )
 
-    df = pd.DataFrame(data, columns=columns)
+    soldier_data_df = pd.DataFrame(data, columns=columns)
 
-    # Scale data (remove timestamp before scaling)
-    scaled_data = scaler.transform(df)
+    # Scale data
+    scaled_data = scaler.transform(soldier_data_df)
 
     # Model Prediction
-    predictions = []
-    for row in scaled_data:
-        input_data = row.reshape(1, -1)
-        predictions.append(model.predict(input_data).flatten()[0])
+    efficiency_predictions = [
+        int(model.predict(row.reshape(1, -1)).flatten()[0] * 100) for row in scaled_data
+    ]
 
-    # Convert NumPy array to list for JSON response
-    predictions = [int(prediction * 100) for prediction in predictions]
-    response = {"efficiency_predictions": predictions}
 
-    # 10 Soldier Data
-    soldier_data = df.to_dict()
-    response["soldier_data"] = soldier_data
+@app.get("/")
+def main_dashboard():
+    generate_soldier_data()
 
+    response = {
+        "efficiency_predictions": efficiency_predictions,
+        "soldier_data": soldier_data_df.to_dict(),
+    }
     return response
 
 
+@app.get("/soldier/{index}")
+def get_soldier_details(index: int):
+    if soldier_data_df is None or efficiency_predictions is None:
+        generate_soldier_data()
+
+    if index < 0 or index >= len(soldier_data_df):
+        raise HTTPException(status_code=404, detail="Soldier index out of range")
+
+    soldier_info = soldier_data_df.iloc[index].to_dict()
+    efficiency = efficiency_predictions[index]
+
+    return {
+        "soldier_index": index,
+        "efficiency": efficiency,
+        "health_metrics": soldier_info,
+    }
+
+
 if __name__ == "__main__":
+    generate_soldier_data()  # Initialize data on startup
     uvicorn.run(app, host="127.0.0.1", port=8000)
