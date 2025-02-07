@@ -10,4 +10,4 @@ scipy
 uvloop
 httptools
 scikit-learn
-fastapi
+fastapi[all]

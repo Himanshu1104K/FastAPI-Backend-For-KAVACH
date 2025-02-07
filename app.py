@@ -4,8 +4,17 @@ import numpy as np
 import pandas as pd
 from fastapi import FastAPI
 import uvicorn
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins (Frontend domains)
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all methods (GET, POST, PUT, DELETE, etc.)
+    allow_headers=["*"],  # Allow all headers
+)
 
 MODEL_FILE = "TrainedModel/SHMS_Efficiency_Model.keras"
 SCALER_FILE = "TrainedModel/scaler.pkl"
