@@ -41,7 +41,7 @@ scaler = jb.load(SCALER_FILE)
 def generate_data():
     data = []
     for _ in range(10):
-        category = np.random.choice(["low", "medium", "high"], p=[0.3, 0.4, 0.3])
+        category = np.random.choice(["low", "medium", "high"], p=[0.001, 0.4, 0.49])
 
         if category == "low":
             temp = np.random.uniform(38, 40)
