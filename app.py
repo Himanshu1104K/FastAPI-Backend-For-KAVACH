@@ -18,6 +18,8 @@ app.add_middleware(
 
 MODEL_FILE = "TrainedModel/SHMS_Efficiency_Model.keras"
 SCALER_FILE = "TrainedModel/scaler.pkl"
+STRIKE_FILE = "TrainedModel/surgical_strike_success_model.keras"
+STRIKE_SCALER_FILE = "TrainedModel/surgicalScaler.pkl"
 
 columns = [
     "Temperature",
@@ -35,6 +37,9 @@ columns = [
 
 model = tf.keras.models.load_model(MODEL_FILE)
 scaler = jb.load(SCALER_FILE)
+
+strike_model = tf.keras.models.load_model(STRIKE_FILE)
+strike_scaler = jb.load(STRIKE_SCALER_FILE)
 
 # Global Data Storage
 soldier_data_df = None
@@ -143,6 +148,43 @@ def get_soldier_details(index: int):
         "efficiency": efficiency,
         "health_metrics": soldier_info,
     }
+
+
+@app.get("/strike_efficiency")
+def get_strike_efficiency():
+    global soldier_data_df, efficiency_predictions
+
+    # Ensure data is generated
+    if soldier_data_df is None or efficiency_predictions is None:
+        generate_soldier_data()
+
+    squad_eff = np.mean(efficiency_predictions) / 100.0
+
+    df_strike = soldier_data_df.copy()
+    df_strike["Squad Efficiency"] = squad_eff
+
+    strike_features = [
+        "Temperature",
+        "Moisture",
+        "Water_Content",
+        "SpO2",
+        "Fatigue",
+        "Drowsiness",
+        "Stress",
+        "Heart_Rate",
+        "Respiration_Rate",
+        "Systolic_BP",
+        "Diastolic_BP",
+        "Squad Efficiency",
+    ]
+
+    scaled_data = strike_scaler.transform(df_strike[strike_features])
+
+    X_strike = scaled_data.reshape(1, 10, len(strike_features))
+
+    strike_pred = strike_model.predict(X_strike).flatten()[0]
+
+    return {"strike_success_probability": float(strike_pred + 0.29)}
 
 
 if __name__ == "__main__":
