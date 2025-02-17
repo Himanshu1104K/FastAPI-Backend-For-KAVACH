@@ -2,6 +2,9 @@ import os
 
 # Disable GPU execution
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "false"
+
 import tensorflow as tf
 import joblib as jb
 import numpy as np
