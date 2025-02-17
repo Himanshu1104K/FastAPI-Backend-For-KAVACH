@@ -1,3 +1,7 @@
+import os
+
+# Disable GPU execution
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 import tensorflow as tf
 import joblib as jb
 import numpy as np
@@ -5,6 +9,7 @@ import pandas as pd
 from fastapi import FastAPI, HTTPException
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
+
 
 app = FastAPI()
 
