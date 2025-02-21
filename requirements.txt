@@ -11,6 +11,3 @@ uvloop
 httptools
 scikit-learn
 fastapi[all]
-langchain_openai
-langchain_core
-langchain

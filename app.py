@@ -1,17 +1,4 @@
 import os
-from langchain_openai import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
-
-os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
-os.environ["LANGCHAIN_TRACING_V2"] = "true"
-os.environ["LANGCHAIN_API_KEY"] = os.getenv("LANGCHAIN_API_KEY")
-
 
 # Disable GPU execution
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
@@ -206,41 +193,6 @@ def get_strike_efficiency():
     strike_pred = strike_model.predict(X_strike).flatten()[0]
 
     return {"strike_success_probability": float(strike_pred + 0.29)}
-
-
-@app.get("/formation")
-def get_formation():
-    # Initialize the ChatOpenAI model (ensure you have the appropriate API key set)
-    chat = ChatOpenAI(model="gpt-4", temperature=0)
-
-    # Create a ChatPromptTemplate with the updated format
-    prompt = ChatPromptTemplate.from_template(
-        """
-        Given the following soldier status data:
-        {soldier_data}
-
-        Decide the best battlefield strategy:
-        1. "DEFENSE_FORMATION" (if the weakest soldier can still contribute)
-        2. "RETREAT_COMMAND" (if the weakest soldier is too weak)
-
-        Provide your decision with clear reasoning.
-        """
-    )
-
-    # Build the chain using LangChain Expression Language (LCEL)
-    chain = (
-        {"soldier_data": RunnablePassthrough()}  # Pass the input directly
-        | prompt  # Apply the prompt template
-        | chat  # Invoke the ChatOpenAI model
-        | StrOutputParser()  # Parse the output as a string
-    )
-
-    response = {
-        "efficiency_predictions": efficiency_predictions,
-        "soldier_data": soldier_data_df.to_dict(),
-    }
-
-    return {"answer": chain.invoke(response)}
 
 
 if __name__ == "__main__":
