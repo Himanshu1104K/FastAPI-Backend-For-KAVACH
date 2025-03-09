@@ -24,10 +24,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-MODEL_FILE = "TrainedModel/SHMS_Efficiency_Model.keras"
-SCALER_FILE = "TrainedModel/scaler.pkl"
-STRIKE_FILE = "TrainedModel/surgical_strike_success_model.keras"
-STRIKE_SCALER_FILE = "TrainedModel/surgicalScaler.pkl"
+MODEL_FILE = "Trained_Models/Efficiency_Model.keras"
+SCALER_FILE = "Trained_Models/Efficiency_Scaler.pkl"
+STRIKE_FILE = "Trained_Models/Surgical_Model.keras"
+STRIKE_SCALER_FILE = "Trained_Models/Surgical_Scaler.pkl"
+SOLDIER_TACTICS_FILE = "Trained_Models/soldier_tactics_model.keras"
+SOLDIER_TACTICS_SCALER = "Trained_Models/Tactics_Scaler.pkl"
+SOLDIER_TACTICS_LABEL_ENCODER = "Trained_Models/Tactics_Label_Encoder.pkl"
 
 columns = [
     "Temperature",
@@ -48,6 +51,10 @@ scaler = jb.load(SCALER_FILE)
 
 strike_model = tf.keras.models.load_model(STRIKE_FILE)
 strike_scaler = jb.load(STRIKE_SCALER_FILE)
+
+tactic_model = tf.keras.models.load_model(SOLDIER_TACTICS_FILE)
+tactic_Scaler = jb.load(SOLDIER_TACTICS_SCALER)
+label_encoder = jb.load(SOLDIER_TACTICS_LABEL_ENCODER)
 
 # Global Data Storage
 soldier_data_df = None
@@ -193,6 +200,52 @@ def get_strike_efficiency():
     strike_pred = strike_model.predict(X_strike).flatten()[0]
 
     return {"strike_success_probability": float(strike_pred + 0.29)}
+
+
+# Predict function
+def predict_tactic(input_data):
+    input_scaled = tactic_Scaler.transform([input_data])
+    prediction = tactic_model.predict(input_scaled)
+    return label_encoder.inverse_transform([np.argmax(prediction)])[0]
+
+
+@app.get("/soldier_tacktics")
+def get_soldier_tactics():
+    soldier_df = pd.DataFrame(soldier_data_df)
+
+    # Add efficiency_predictions to the DataFrame
+    soldier_df["efficiency_predictions"] = efficiency_predictions
+
+    # Generate random values for "x" and "y" between 1 and 100
+    soldier_df["x"] = [np.random.randint(1, 100) for _ in range(len(soldier_df))]
+    soldier_df["y"] = [np.random.randint(1, 100) for _ in range(len(soldier_df))]
+
+    # Convert the DataFrame back to the desired dictionary format
+    formatted_data = {
+        "efficiency_predictions": soldier_df["efficiency_predictions"].tolist(),
+        "Temperature": soldier_df["Temperature"].tolist(),
+        "Moisture": soldier_df["Moisture"].tolist(),
+        "Water_Content": soldier_df["Water_Content"].tolist(),
+        "SpO2": soldier_df["SpO2"].tolist(),
+        "Fatigue": soldier_df["Fatigue"].tolist(),
+        "Drowsiness": soldier_df["Drowsiness"].tolist(),
+        "Stress": soldier_df["Stress"].tolist(),
+        "Heart_Rate": soldier_df["Heart_Rate"].tolist(),
+        "Respiration_Rate": soldier_df["Respiration_Rate"].tolist(),
+        "x": soldier_df["x"].tolist(),
+        "y": soldier_df["y"].tolist(),
+    }
+    aggregated_data = {
+        key: (
+            np.mean(value) if isinstance(value, list) else value
+        )  # Use np.mean for aggregation
+        for key, value in formatted_data.items()
+    }
+
+    formation = predict_tactic(list(aggregated_data.values()))
+
+    # Print the formatted
+    return {"formation": formation}
 
 
 if __name__ == "__main__":
